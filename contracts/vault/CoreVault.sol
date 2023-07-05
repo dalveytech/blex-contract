@@ -85,6 +85,12 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
         emit CoolDownDurationUpdated(_duration);
     }
 
+    /**
+     * @dev Transfers out assets to the specified address.
+     * Only the controller can call this function.
+     * @param to The address to transfer the assets to.
+     * @param amount The amount of assets to transfer.
+     */
     function transferOutAssets(
         address to,
         uint256 amount
@@ -92,6 +98,10 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
         SafeERC20.safeTransfer(IERC20(asset()), to, amount);
     }
 
+    /**
+     * @dev Returns the total assets held in the contract.
+     * @return The total assets held in the contract.
+     */
     function totalAssets()
         public
         view
@@ -101,6 +111,12 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
         return vaultRouter.getAUM();
     }
 
+    /**
+     * @dev Calculates the computational costs for a transaction.
+     * @param isBuy Boolean indicating whether it's a buy transaction.
+     * @param amount The amount of assets involved in the transaction.
+     * @return The computational costs for the transaction.
+     */
     function computationalCosts(
         bool isBuy,
         uint256 amount
@@ -112,10 +128,21 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
         }
     }
 
+    /**
+     * @dev Retrieves the LP fee based on the transaction type.
+     * @param isBuy Boolean indicating whether it's a buy transaction.
+     * @return The LP fee for the specified transaction type.
+     */
     function getLPFee(bool isBuy) public view override returns (uint256) {
         return isBuy ? buyLpFee : sellLpFee;
     }
 
+    /**
+     * @dev Converts assets to shares based on rounding method.
+     * @param assets The amount of assets to convert.
+     * @param rounding The rounding method to use.
+     * @return shares The corresponding number of shares.
+     */
     function _convertToShares(
         uint256 assets,
         Math.Rounding rounding
@@ -129,6 +156,12 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
                 (FEE_RATE_PRECISION - sellLpFee);
     }
 
+    /**
+     * @dev Converts shares to assets based on rounding method.
+     * @param shares The number of shares to convert.
+     * @param rounding The rounding method to use.
+     * @return assets The corresponding amount of assets.
+     */
     function _convertToAssets(
         uint256 shares,
         Math.Rounding rounding
@@ -141,6 +174,13 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
         else return assets - computationalCosts(isBuy, assets);
     }
 
+    /**
+     * @dev Transfers the transaction fee to the fee vault.
+     * @param account The account to collect the fee from.
+     * @param _asset The address of the asset for the fee.
+     * @param fee The amount of the fee to transfer.
+     * @param isBuy Boolean indicating whether it's a buy transaction.
+     */
     function _transFeeTofeeVault(
         address account,
         address _asset,
@@ -163,6 +203,13 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
 
     uint256 constant NUMBER_OF_DEAD_SHARES = 1000;
 
+    /**
+     * @dev Internal function to handle the deposit of assets.
+     * @param caller The address of the caller.
+     * @param receiver The address of the receiver.
+     * @param assets The amount of assets to deposit.
+     * @param shares The number of shares to mint.
+     */
     function _deposit(
         address caller,
         address receiver,
@@ -187,6 +234,14 @@ contract CoreVault is ERC4626, AcUpgradable, ICoreVault {
         emit DepositAsset(caller, receiver, assets, shares, cost);
     }
 
+    /**
+     * @dev Internal function to handle the withdrawal of assets.
+     * @param caller The address of the caller.
+     * @param receiver The address of the receiver.
+     * @param _owner The address of the owner.
+     * @param assets The amount of assets to withdraw.
+     * @param shares The number of shares to burn.
+     */
     function _withdraw(
         address caller,
         address receiver,

@@ -36,8 +36,8 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
     constructor() Ac(address(0)) {}
 
     /**
-     * @notice Increases a position and placing take profit and stop loss orders
-     * @dev Can only be called internally by the contract, takes a struct _inputs that contains the updated position information
+     * @notice Called by `MarketRouter`.Increases a position and placing take profit and stop loss orders
+     * @dev This function will be called by `Market` contract through `delegatecall`, takes a struct _inputs that contains the updated position information
      * @param _inputs The struct containing parameters needed to update the position
      */
     function increasePositionWithOrders(
@@ -126,6 +126,12 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
         }
     }
 
+    /**
+     * @dev Commits the increase position operation based on the provided parameters.
+     * @param _params The market data inputs required for the position update.
+     * @param collD The change in collateral amount.
+     * @param fr The fee amount.
+     */
     function commitIncreasePosition(
         MarketDataTypes.UpdatePositionInputs memory _params,
         int256 collD,
@@ -157,12 +163,18 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
         }
     }
 
+    /**
+     * @dev Increases the position based on the provided inputs and position properties.
+     * @param _params The market data inputs required for the position update.
+     * @param _position The properties of the position being updated.
+     * @return collD The change in collateral amount.
+     */
     function _increasePosition(
         MarketDataTypes.UpdatePositionInputs memory _params,
         Position.Props memory _position
     ) private returns (int256 collD) {
         MarketLib._updateCumulativeFundingRate(positionBook, feeRouter); //1
-        _params._market = address(this); 
+        _params._market = address(this);
         int256[] memory _fees = feeRouter.getFees(_params, _position);
         int256 _totalfee = _fees.totoalFees();
 
@@ -213,6 +225,10 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
         require(p > 0, "invalid price");
     }
 
+    /**
+     * @dev Processes the transaction fees.
+     * @param fees The amount of fees to be processed.
+     */
     function _transationsFees(int256 fees) private {
         if (fees < 0) {
             IFeeRouter(feeRouter).withdraw(
@@ -229,6 +245,11 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
         }
     }
 
+    /**
+     * @dev Called by `AutoOrder`.Executes an order key based on the provided order properties and position update inputs.
+     * @param exeOrder The properties of the order to be executed.
+     * @param _params The market data inputs required for the position update.
+     */
     function execOrderKey(
         Order.Props memory exeOrder,
         MarketDataTypes.UpdatePositionInputs memory _params
@@ -238,6 +259,11 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
         _execIncreaseOrderKey(exeOrder, _params);
     }
 
+    /**
+     * @dev Executes an increase order key based on the provided order properties and position update inputs.
+     * @param order The properties of the order to be executed.
+     * @param _params The market data inputs required for the position update.
+     */
     function _execIncreaseOrderKey(
         Order.Props memory order,
         MarketDataTypes.UpdatePositionInputs memory _params
@@ -297,6 +323,13 @@ contract PositionAddMgr is MarketStorage, ReentrancyGuard, Ac {
             );
     }
 
+    /**
+     * @dev Builds the variables required for creating a decrease order.
+     * @param _inputs The market data inputs required for the position update.
+     * @param triggerPrice The trigger price for the decrease order.
+     * @param isTP A flag indicating if the trigger price is for Take Profit.
+     * @return _createVars The variables required for creating the decrease order.
+     */
     function _buildDecreaseVars(
         MarketDataTypes.UpdatePositionInputs memory _inputs,
         uint256 /* collateralIncreased */,

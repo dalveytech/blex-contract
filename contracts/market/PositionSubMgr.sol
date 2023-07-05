@@ -38,6 +38,10 @@ contract PositionSubMgr is MarketStorage, ReentrancyGuard, Ac {
 
     constructor() Ac(address(0)) {}
 
+    /**
+     * @dev Called by `MarketRouter`.Decreases a position.
+     * @param _vars The input variables for updating the position.
+     */
     function decreasePosition(
         MarketDataTypes.UpdatePositionInputs memory _vars
     ) external {
@@ -45,14 +49,22 @@ contract PositionSubMgr is MarketStorage, ReentrancyGuard, Ac {
             !_vars._isExec && 0 == _vars._fromOrder,
             "PositionSubMgr:wrong isexec/fromorder"
         );
+
+        // Set a default slippage value if not provided
         if (_vars._slippage == 0) _vars._slippage = 30;
+
+        // Get the oracle price if the size delta is greater than zero
         if (_vars._sizeDelta > 0)
             _vars._oraclePrice = _getClosePrice(_vars._isLong);
+
+        // Get the position details from the position book
         Position.Props memory _position = positionBook.getPosition(
             _vars._account,
             _vars._oraclePrice,
             _vars._isLong
         );
+
+        // Calculate the decrease delta collateral if the size delta is greater than zero
         if (_vars._sizeDelta > 0)
             _vars.collateralDelta = MarketLib.getDecreaseDeltaCollateral(
                 _vars.isKeepLev(),
@@ -60,40 +72,63 @@ contract PositionSubMgr is MarketStorage, ReentrancyGuard, Ac {
                 _vars._sizeDelta,
                 _position.collateral
             );
+
+        // Call the private function to perform the decrease position operation
         _decreasePosition(_vars, _position);
     }
 
+    /**
+     * @dev Called by `AutoLiquidate`.Liquidates positions for multiple accounts.
+     * @param accounts The array of accounts to liquidate positions for.
+     * @param _isLong Boolean flag indicating whether the liquidation is for long positions.
+     */
     function liquidatePositions(
         address[] memory accounts,
         bool _isLong
     ) external {
         uint256 _len = accounts.length;
+
         for (uint256 i; i < _len; ) {
             address _account = accounts[i];
+
+            // Liquidate position for the specified account and flag
             _liquidatePosition(_account, _isLong);
+
             unchecked {
                 ++i;
             }
         }
     }
 
+    /**
+     * @dev Performs the liquidation of a position for a specific account.
+     * @param _account The address of the account to liquidate the position for.
+     * @param _isLong Boolean flag indicating whether the liquidation is for long positions.
+     * @dev This function is private and should not be called directly from outside the contract.
+     */
     function _liquidatePosition(address _account, bool _isLong) private {
         MarketDataTypes.UpdatePositionInputs memory _vars;
+
+        // Initialize the variables for the liquidation process
         _vars.initialize(false);
         _vars._oraclePrice = _getClosePrice(_isLong);
         _vars._account = _account;
-
         _vars._isExec = true;
         _vars._isLong = _isLong;
+
+        // Get the position details from the position book
         Position.Props memory _position = positionBook.getPosition(
             _account,
             _vars._oraclePrice,
             _isLong
         );
+
+        // Calculate the changes in size and collateral for the liquidation
         _vars._sizeDelta = _position.size;
         _vars.collateralDelta = _position.collateral;
         _vars._market = address(this);
 
+        // Determine the liquidation state using the 'isLiquidate' function from the '_valid' contract
         _vars.liqState = uint8(
             _valid().isLiquidate(
                 _account,
@@ -104,36 +139,57 @@ contract PositionSubMgr is MarketStorage, ReentrancyGuard, Ac {
                 _getClosePrice(_isLong)
             )
         );
+
+        // Ensure that the liquidation state is greater than 0, indicating a valid liquidation
         require(_vars.liqState > 0, "PositionSubMgr:should'nt liq");
+
+        // Decrease the position using the '_decreasePosition' function
         _decreasePosition(_vars, _position);
     }
 
+    /**
+     * @dev Performs the decrease position operation.
+     * @param _params The input parameters for updating the position.
+     * @param _position The position details.
+     */
     function _decreasePosition(
         MarketDataTypes.UpdatePositionInputs memory _params,
         Position.Props memory _position
     ) private {
+        // Return if the position size is zero or the account is invalid
         if (_position.size == 0 || _params._account == address(0)) return;
+
+        // Update the cumulative funding rate
         MarketLib._updateCumulativeFundingRate(positionBook, feeRouter);
+
+        // Check if the position is being closed entirely
         bool isCloseAll = _position.size == _params._sizeDelta;
 
         if (isCloseAll) {
+            // Determine the cancellation reason based on the liquidation state
             CancelReason reason = CancelReason.PositionClosed;
             if (_params.liqState == 1) reason = CancelReason.Liquidation;
             else if (_params.liqState == 2)
                 reason = CancelReason.PartialLiquidation;
 
+            // Get the order book based on the position type (long/short)
             IOrderBook ob = _params._isLong ? orderBookLong : orderBookShort;
+
+            // Remove orders associated with the account
             Order.Props[] memory _ordersDeleted = ob.removeByAccount(
                 false,
                 _params._account
             );
 
+            // Iterate over the deleted orders and perform necessary actions
             for (uint i = 0; i < _ordersDeleted.length; i++) {
                 Order.Props memory _orderDeleted = _ordersDeleted[i];
                 if (_orderDeleted.account == address(0)) {
                     continue;
                 }
                 _params.execNum += 1;
+
+                // Perform actions after deleting the order
                 MarketLib.afterDeleteOrder(
                     MarketOrderCallBackIntl.DeleteOrderEvent(
                         _orderDeleted,
@@ -244,7 +300,6 @@ contract PositionSubMgr is MarketStorage, ReentrancyGuard, Ac {
         IVaultRouter(vaultRouter).transferToVault(address(this), _amount);
     }
 
-    
     function _decreaseTransaction(
         MarketDataTypes.UpdatePositionInputs memory _params,
         Position.Props memory _position,

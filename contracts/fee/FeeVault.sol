@@ -49,6 +49,12 @@ contract FeeVault is Ac {
         }
     }
 
+    /**
+     * @dev Allows an authorized role to withdraw tokens to a specified address.
+     * @param token The address of the token to be withdrawn.
+     * @param to The address to which the tokens will be transferred.
+     * @param amount The amount of tokens to be withdrawn.
+     */
     function withdraw(
         address token,
         address to,
@@ -58,6 +64,12 @@ contract FeeVault is Ac {
         emit Withdraw(token, to, amount);
     }
 
+    /**
+     * @dev Decreases the fees associated with a market and an account.
+     * @param market The address of the market.
+     * @param account The address of the account.
+     * @param fees An array of fees to be decreased.
+     */
     function decreaseFees(
         address market,
         address account,
@@ -82,6 +94,12 @@ contract FeeVault is Ac {
         toAccountFees[account] += _toAccountFees;
     }
 
+    /**
+     * @dev Increases the fees associated with a market and an account.
+     * @param market The address of the market.
+     * @param account The address of the account.
+     * @param fees An array of fees to be increased.
+     */
     function increaseFees(
         address market,
         address account,
@@ -109,6 +127,15 @@ contract FeeVault is Ac {
         accountFees[account] += _accountFees;
     }
 
+    /**
+     * @dev Updates the global funding rates for a market.
+     * @param market The address of the market.
+     * @param longRate The current long funding rate.
+     * @param shortRate The current short funding rate.
+     * @param nextLongRate The next long funding rate.
+     * @param nextShortRate The next short funding rate.
+     * @param timestamp The timestamp of the update.
+     */
     function updateGlobalFundingRate(
         address market,
         int256 longRate,

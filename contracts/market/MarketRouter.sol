@@ -78,7 +78,7 @@ contract MarketRouter is
         bool isKeepLev,
         MarketDataTypes.UpdateOrderInputs params
     );
- 
+
     event DeleteOrder(
         address indexed account,
         bool isLong,
@@ -220,6 +220,10 @@ contract MarketRouter is
         IMarket(_vars._market).updateOrder(_vars);
     }
 
+    /**
+     * @dev Updates the order based on the position inputs.
+     * @param _inputs The market data inputs required for the position update.
+     */
     function _updateOrderFromPosition(
         MarketDataTypes.UpdatePositionInputs memory _inputs
     ) internal {
@@ -451,7 +455,7 @@ contract MarketRouter is
             _event.inputs._isLong,
             _event.inputs._oraclePrice,
             _event.position.realisedPnl,
-            _event.fees, 
+            _event.fees,
             _event.inputs._market,
             _event.collateralToken,
             _event.indexToken,

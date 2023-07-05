@@ -29,6 +29,13 @@ contract RewardDistributor is Ac {
         rewardTracker = _rewardTracker;
     }
 
+    /**
+     * @dev Withdraws tokens from the contract and transfers them to the specified account.
+     * Only the admin can call this function.
+     * @param _token The address of the token to withdraw.
+     * @param _account The address to transfer the tokens to.
+     * @param _amount The amount of tokens to withdraw.
+     */
     function withdrawToken(
         address _token,
         address _account,
@@ -37,10 +44,19 @@ contract RewardDistributor is Ac {
         IERC20(_token).safeTransfer(_account, _amount);
     }
 
+    /**
+     * @dev Updates the last distribution time to the current block timestamp.
+     * Only the admin can call this function.
+     */
     function updateLastDistributionTime() external onlyAdmin {
         lastDistributionTime = block.timestamp;
     }
 
+    /**
+     * @dev Sets the number of tokens to distribute per interval.
+     * Only the admin can call this function.
+     * @param _amount The number of tokens per interval.
+     */
     function setTokensPerInterval(uint256 _amount) external onlyAdmin {
         require(
             lastDistributionTime != 0,
@@ -51,6 +67,10 @@ contract RewardDistributor is Ac {
         emit TokensPerIntervalChange(_amount);
     }
 
+    /**
+     * @dev Calculates the pending rewards based on the last distribution time and tokens per interval.
+     * @return The pending rewards.
+     */
     function pendingRewards() public view returns (uint256) {
         if (block.timestamp == lastDistributionTime) {
             return 0;
@@ -60,6 +80,9 @@ contract RewardDistributor is Ac {
         return tokensPerInterval * timeDiff;
     }
 
+    /**
+     * @dev Modifier to only allow the reward tracker contract to call a function.
+     */
     modifier onlyRewardTracker() {
         require(
             msg.sender == rewardTracker,
@@ -68,6 +91,11 @@ contract RewardDistributor is Ac {
         _;
     }
 
+    /**
+     * @dev Called by `VaultReward`.Distributes pending rewards to the reward tracker contract.
+     * Only the reward tracker contract can call this function.
+     * @return The amount of rewards distributed.
+     */
     function distribute() external onlyRewardTracker returns (uint256) {
         uint256 amount = pendingRewards();
         if (amount == 0) {

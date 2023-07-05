@@ -33,6 +33,10 @@ contract OrderMgr is MarketStorage, ReentrancyGuard, Ac {
 
     constructor() Ac(address(0)) {}
 
+    /**
+     * Called by `Admin`.
+     * @param addrs new contracts address list
+     */
     function setContracts(address[] memory addrs) external {
         positionBook = IPositionBook(addrs[0]);
         orderBookLong = IOrderBook(addrs[1]);
@@ -48,7 +52,7 @@ contract OrderMgr is MarketStorage, ReentrancyGuard, Ac {
     }
 
     /**
-     * The `updateOrder` function is used to update an order on the order book. It validates inputs,
+     * Called by `MarketRouter`.The `updateOrder` function is used to update an order on the order book. It validates inputs,
      * calculates fees, and triggers events. Depending on the order's state, it either adds a new order or
      * updates an existing one. It also selects the correct order book based on whether the order is long or
      * short. If the order is being created, it calculates the required collateral based on the order size
@@ -62,7 +66,7 @@ contract OrderMgr is MarketStorage, ReentrancyGuard, Ac {
             _valid().validPay(_vars.pay());
         }
         if (false == _vars.isOpen)
-        _vars._oraclePrice = getPrice(_vars._isLong == _vars.isOpen);
+            _vars._oraclePrice = getPrice(_vars._isLong == _vars.isOpen);
         if (_vars.isFromMarket()) {
             if (_vars.isOpen == _vars._isLong)
                 _vars._order.price = (_vars._order.price +
@@ -126,14 +130,14 @@ contract OrderMgr is MarketStorage, ReentrancyGuard, Ac {
     }
 
     /**
- * The `cancelOrderList` function cancels multiple orders belonging to a given account. It requires
-administrative access control or controller role. It takes in three arrays: one containing booleans
-that specify whether each order being cancelled is an increase or decrease order, another containing
-the order IDs, and a third containing booleans that specify whether each order is long or short.
-The function iterates over each order, removes it from the order book, and calls `_cancelOrder`
-to calculate the refundable collateral amount. Finally, it transfers the refunded collateral to the
-account.
- */
+     * Called by `MarketRouter`.The `cancelOrderList` function cancels multiple orders belonging to a given account. It requires
+     * administrative access control or controller role. It takes in three arrays: one containing booleans
+     * that specify whether each order being cancelled is an increase or decrease order, another containing
+     * the order IDs, and a third containing booleans that specify whether each order is long or short.
+     * The function iterates over each order, removes it from the order book, and calls `_cancelOrder`
+     * to calculate the refundable collateral amount. Finally, it transfers the refunded collateral to the
+     * account.
+     */
     function cancelOrderList(
         address _account,
         bool[] memory _isIncreaseList,
@@ -169,7 +173,7 @@ account.
     }
 
     /**
-     * @notice Allows manager to cancel orders from the order book by specifying an array of order keys,
+     * @notice Called by `Market`.Allows manager to cancel orders from the order book by specifying an array of order keys,
      *  whether the order is long or short, and whether the order is to be increased or decreased.
      * @dev Only callable by the system contract
      * @param _orderKey An array of order keys

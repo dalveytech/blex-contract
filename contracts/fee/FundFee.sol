@@ -75,6 +75,11 @@ contract FundFee is Ownable, Ac {
         }
     }
 
+    /**
+     * @dev Adds a skip time interval during which certain operations are skipped.
+     * @param start The start timestamp of the skip time interval.
+     * @param end The end timestamp of the skip time interval.
+     */
     function addSkipTime(uint256 start, uint256 end) external onlyAdmin {
         require(end >= start, "invalid params");
 
@@ -86,10 +91,20 @@ contract FundFee is Ownable, Ac {
         emit AddSkipTime(start, end);
     }
 
+    /**
+     * @dev Retrieves the current timestamp.
+     * @return The current timestamp.
+     */
     function _getTimeStamp() private view returns (uint256) {
         return block.timestamp;
     }
 
+    /**
+     * @dev Updates the cumulative funding rate for a market based on the sizes of long and short positions.
+     * @param market The address of the market.
+     * @param longSize The size of the long position.
+     * @param shortSize The size of the short position.
+     */
     function updateCumulativeFundingRate(
         address market,
         uint256 longSize,
@@ -130,6 +145,14 @@ contract FundFee is Ownable, Ac {
         );
     }
 
+    /**
+     * @dev Retrieves the funding rate for a market based on the sizes of long and short positions.
+     * @param market The address of the market.
+     * @param longSize The size of the long position.
+     * @param shortSize The size of the short position.
+     * @param isLong Flag indicating whether the position is long.
+     * @return The funding rate.
+     */
     function getFundingRate(
         address market,
         uint256 longSize,
@@ -151,6 +174,14 @@ contract FundFee is Ownable, Ac {
         return _shortRate;
     }
 
+    /**
+     * @dev Retrieves the funding fee for a market based on the size, entry funding rate, and position type.
+     * @param market The address of the market.
+     * @param size The size of the position.
+     * @param entryFundingRate The entry funding rate of the position.
+     * @param isLong Flag indicating whether the position is long.
+     * @return The funding fee.
+     */
     function getFundingFee(
         address market,
         uint256 size,
@@ -170,6 +201,13 @@ contract FundFee is Ownable, Ac {
         return _getFundingFee(size, entryFundingRate, _cumRates) / _divisor;
     }
 
+    /**
+     * @dev Retrieves the next funding rates for a market based on the sizes of long and short positions.
+     * @param market The address of the market.
+     * @param longSize The size of the long position.
+     * @param shortSize The size of the short position.
+     * @return The next funding rates for long and short positions.
+     */
     function getNextFundingRate(
         address market,
         uint256 longSize,
@@ -188,6 +226,12 @@ contract FundFee is Ownable, Ac {
         return (_longRates, _shortRates);
     }
 
+    /**
+     * @dev Retrieves the funding rate for a market based on the sizes of long and short positions.
+     * @param longSize The size of the long position.
+     * @param shortSize The size of the short position.
+     * @return The funding rates for long and short positions.
+     */
     function _getFundingRate(
         uint256 longSize,
         uint256 shortSize
@@ -204,23 +248,34 @@ contract FundFee is Ownable, Ac {
         return (int256(minorityFRate), _sRate);
     }
 
+    /**
+     * @dev Calculates the fee rate based on the long and short positions' sizes.
+     * @param _longSize The size of the long position.
+     * @param _shortSize The size of the short position.
+     * @return The fee rate calculated based on the position sizes.
+     */
     function _calFeeRate(
         uint256 _longSize,
         uint256 _shortSize
     ) private view returns (uint256) {
+        // If both long and short positions have size 0, return the minimum rate limit.
         if (_longSize == 0 && _shortSize == 0) {
             return minRateLimit;
         }
 
         uint256 _size;
+        // Calculate the absolute difference between longSize and shortSize.
         if (_longSize >= _shortSize) _size = _longSize - _shortSize;
         else _size = _shortSize - _longSize;
 
         uint256 _rate;
         if (_size != 0) {
+            // Calculate the divisor by summing longSize and shortSize.
             uint256 _divisor = _longSize + _shortSize;
 
+            // Calculate the fee rate.
             _rate = (_size * FEE_RATE_PRECISION) / _divisor;
+            // Square the rate and divide by constants to adjust the rate.
             _rate =
                 (_rate ** 2) /
                 FEE_RATE_PRECISION /
@@ -228,6 +283,7 @@ contract FundFee is Ownable, Ac {
                 BASIS_INTERVAL_HOU;
         }
 
+        // If the calculated rate is less than the minimum rate limit, return the minimum rate limit.
         if (_rate < minRateLimit) {
             return minRateLimit;
         }
@@ -235,35 +291,63 @@ contract FundFee is Ownable, Ac {
         return _rate;
     }
 
+    /**
+     * @dev Calculates the funding fee based on the position size, entry funding rate, and cumulative rates.
+     * @param size The size of the position.
+     * @param entryFundingRate The entry funding rate of the position.
+     * @param cumRates The cumulative rates.
+     * @return The funding fee calculated based on the position parameters.
+     */
     function _getFundingFee(
         uint256 size,
         int256 entryFundingRate,
         int256 cumRates
     ) private pure returns (int256) {
         int256 _rate = cumRates - entryFundingRate;
+        // If the rate is 0, return 0 as the funding fee.
         if (_rate == 0) {
             return 0;
         }
+        // Calculate the funding fee by multiplying the position size with the rate.
         return int256(size) * _rate;
     }
 
+    /**
+     * @dev Retrieves the funding interval for a given market.
+     * @param market The address of the market.
+     * @return The funding interval for the specified market, or the minimum funding interval if not set.
+     */
     function _getFundingInterval(
         address market
     ) private view returns (uint256) {
         uint256 _interval = fundingIntervals[market];
+        // If the funding interval is set for the market, return it.
         if (_interval != 0) {
             return _interval;
         }
 
+        // If the funding interval is not set, return the minimum funding interval.
         return MIN_FUNDING_INTERVAL;
     }
 
+    /**
+     * @dev Retrieves the last funding time for a given market from the FeeVault contract.
+     * @param market The address of the market.
+     * @return The last funding time for the specified market.
+     */
     function _getLastFundingTimes(
         address market
     ) private view returns (uint256) {
         return IFeeVault(feeVault).lastFundingTimes(market);
     }
 
+    /**
+     * @dev Calculates the next funding rate for a given market based on the current rates and funding interval.
+     * @param _market The address of the market.
+     * @param _longRate The current long rate.
+     * @param _shortRate The current short rate.
+     * @return The next long rate and short rate after the funding interval has passed.
+     */
     function _getNextFundingRate(
         address _market,
         int256 _longRate,
@@ -272,6 +356,7 @@ contract FundFee is Ownable, Ac {
         uint256 _fundingInterval = _getFundingInterval(_market);
         uint256 _lastTime = _getLastFundingTimes(_market);
 
+        // If the next funding time is not reached yet, return (0, 0) as the next rates.
         if ((_lastTime + _fundingInterval) > _getTimeStamp()) {
             return (0, 0);
         }
@@ -281,12 +366,22 @@ contract FundFee is Ownable, Ac {
             (_getTimeStamp() - _lastTime - _skipTimes) / MIN_FUNDING_INTERVAL
         );
 
+        // Calculate the next long and short rates based on the intervals.
         int256 _longRates = _longRate * _intervals;
         int256 _shortRates = _shortRate * _intervals;
 
         return (_longRates, _shortRates);
     }
 
+    /**
+     * @dev Updates the global funding rate for a specific market in the FeeVault contract.
+     * @param market The address of the market.
+     * @param longRate The current long rate.
+     * @param shortRate The current short rate.
+     * @param nextLongRate The next long rate after the funding interval.
+     * @param nextShortRate The next short rate after the funding interval.
+     * @param timestamp The current timestamp.
+     */
     function _updateGlobalFundingRate(
         address market,
         int256 longRate,
@@ -295,26 +390,33 @@ contract FundFee is Ownable, Ac {
         int256 nextShortRate,
         uint256 timestamp
     ) private {
-        return
-            IFeeVault(feeVault).updateGlobalFundingRate(
-                market,
-                longRate,
-                shortRate,
-                nextLongRate,
-                nextShortRate,
-                timestamp
-            );
+        IFeeVault(feeVault).updateGlobalFundingRate(
+            market,
+            longRate,
+            shortRate,
+            nextLongRate,
+            nextShortRate,
+            timestamp
+        );
     }
 
+    /**
+     * @dev Retrieves the total skip times accumulated based on the current timestamp and skip times array.
+     * @return totalSkip The total skip times accumulated.
+     */
     function _getSkipTimes() private view returns (uint256 totalSkip) {
+        // If there are no skip times defined, return the total skip as 0.
         if (skipTimes.length == 0) {
             return totalSkip;
         }
 
-        for (uint i = 0; i < skipTimes.length; i++) {
+        // Iterate through the skip times array and calculate the total skip times.
+        for (uint256 i = 0; i < skipTimes.length; i++) {
             if (block.timestamp > skipTimes[i].end) {
                 totalSkip += (skipTimes[i].end - skipTimes[i].start);
             }
         }
+        // Return the total skip times accumulated.
+        return totalSkip;
     }
 }

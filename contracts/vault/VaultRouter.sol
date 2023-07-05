@@ -143,6 +143,12 @@ contract VaultRouter is AcUpgradable, ReentrancyGuard {
         uint256 totalFundsUsed
     );
 
+    /**
+     * @dev Updates the funds used for a specific market.
+     * @param market The address of the market.
+     * @param amount The amount of funds used.
+     * @param isBorrow Boolean indicating whether it's a borrow operation.
+     */
     function updateFundsUsed(
         address market,
         uint256 amount,
@@ -152,7 +158,7 @@ contract VaultRouter is AcUpgradable, ReentrancyGuard {
             uint256 pendingFundsUsed = totalFundsUsed + amount;
             uint256 aum = getAUM();
 
-            require(aum > 0, "inlvalid aum");
+            require(aum > 0, "invalid AUM");
             require(pendingFundsUsed < aum, "not enough funds to borrow");
 
             fundsUsed[market] += amount;
@@ -195,7 +201,7 @@ contract VaultRouter is AcUpgradable, ReentrancyGuard {
     }
 
     /**
-     * @dev This function calculates the assets under management (AUM) of the contract.
+     * @dev Called by `CoreVault` and `VaultReward`.This function calculates the assets under management (AUM) of the contract.
      * @return aum The AUM value as a uint256.
      */
     function getAUM() public view returns (uint256) {

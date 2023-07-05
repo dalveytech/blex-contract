@@ -55,6 +55,13 @@ contract PositionStore is Ac {
         emit UpdatePositionBook(_old, pb);
     }
 
+    /**
+     * @dev Called by `PositionBook`.Sets the position and global position for a specific account.
+     * @param account The address of the account.
+     * @param position The Props struct representing the position.
+     * @param globalPosition The Props struct representing the global position.
+     * @dev This function can only be called by the controller.
+     */
     function set(
         address account,
         Position.Props calldata position,
@@ -68,6 +75,12 @@ contract PositionStore is Ac {
         emit UpdatePosition(account, position.size, position.collateral);
     }
 
+    /**
+     * @dev Called by `PositionBook`.Removes the position and updates the global position for a specific account.
+     * @param account The address of the account.
+     * @param globalPosition The Props struct representing the global position.
+     * @dev This function can only be called by the controller.
+     */
     function remove(
         address account,
         Position.Props calldata globalPosition

@@ -55,6 +55,11 @@ contract GlobalValid is Ac {
         maxMarketSizeLimit[market] = limit;
     }
 
+    /**
+     * @dev Checks if the position should be increased.
+     * @param params The ValidParams struct containing the valid parameters.
+     * @return A boolean indicating whether the position should be increased.
+     */
     function isIncreasePosition(
         GlobalDataTypes.ValidParams memory params
     ) external view returns (bool) {
@@ -63,15 +68,30 @@ contract GlobalValid is Ac {
         }
 
         uint256 _max = _getMaxIncreasePositionSize(params);
+
+        /**
+         * @dev Checks if the maximum increase in position size is greater than or equal to sizeDelta.
+         * @return A boolean indicating whether the maximum increase in position size is satisfied.
+         */
         return (_max >= params.sizeDelta);
     }
 
+    /**
+     * @dev Retrieves the maximum increase in position size.
+     * @param params The ValidParams struct containing the valid parameters.
+     * @return The maximum increase in position size as a uint256 value.
+     */
     function getMaxIncreasePositionSize(
         GlobalDataTypes.ValidParams memory params
     ) external view returns (uint256) {
         return _getMaxIncreasePositionSize(params);
     }
 
+    /**
+     * @dev Retrieves the maximum increase in position size based on the provided parameters.
+     * @param params The ValidParams struct containing the valid parameters.
+     * @return The maximum increase in position size as a uint256 value.
+     */
     function _getMaxIncreasePositionSize(
         GlobalDataTypes.ValidParams memory params
     ) private view returns (uint256) {
@@ -112,6 +132,14 @@ contract GlobalValid is Ac {
         return _min;
     }
 
+    /**
+     * @dev Calculates the maximum usable global position size based on the provided parameters.
+     * @param longSize The current long position size.
+     * @param shortSize The current short position size.
+     * @param usdBalance The USD balance of the account.
+     * @param isLong A boolean indicating whether the position is long (true) or short (false).
+     * @return The maximum usable global position size as a uint256 value.
+     */
     function _getMaxUseableGlobalSize(
         uint256 longSize,
         uint256 shortSize,
@@ -124,6 +152,13 @@ contract GlobalValid is Ac {
         return (_limit - _size);
     }
 
+    /**
+     * @dev Calculates the maximum usable net position size based on the provided parameters.
+     * @param longSize The current long position size.
+     * @param shortSize The current short position size.
+     * @param usdBalance The USD balance of the account.
+     * @return The maximum usable net position size as a uint256 value.
+     */
     function _getMaxUseableNetSize(
         uint256 longSize,
         uint256 shortSize,
@@ -137,6 +172,13 @@ contract GlobalValid is Ac {
         return (_limit - _size);
     }
 
+    /**
+     * @dev Calculates the maximum usable net position size for the user based on the provided parameters.
+     * @param longSize The user's current long position size.
+     * @param shortSize The user's current short position size.
+     * @param usdBalance The USD balance of the user's account.
+     * @return The maximum usable net position size for the user as a uint256 value.
+     */
     function _getMaxUseableUserNetSize(
         uint256 longSize,
         uint256 shortSize,
@@ -152,6 +194,14 @@ contract GlobalValid is Ac {
         return (_limit - _size);
     }
 
+    /**
+     * @dev Calculates the maximum usable market position size based on the provided parameters.
+     * @param market The address of the market.
+     * @param isLong A boolean indicating whether the position is long (true) or short (false).
+     * @param longSize The current long position size.
+     * @param shortSize The current short position size.
+     * @return The maximum usable market position size as a uint256 value.
+     */
     function _getMaxUseableMarketSize(
         address market,
         bool isLong,

@@ -27,9 +27,10 @@ contract OrderStore is Ac {
         isLong = _isLong;
     }
 
-    //===================================
-
-    //===================================
+    /**
+     * @dev Called by `OrderBook`.Adds an order to the order store.
+     * @param order The order to be added.
+     */
     function add(Order.Props memory order) external onlyController {
         order.updateTime();
         bytes32 key = order.getKey();
@@ -39,19 +40,21 @@ contract OrderStore is Ac {
         ordersByAccount[order.account].add(order.getKey());
     }
 
-    //===================================
-
-    //===================================
-
+    /**
+     * @dev Called by `OrderBook`.Sets an order in the order store.
+     * @param order The order to be set.
+     */
     function set(Order.Props memory order) external onlyController {
         bytes32 key = order.getKey();
         order.updateTime();
         orders[key] = order;
     }
 
-    //===================================
-
-    //===================================
+    /**
+     * @dev Called by `OrderBook`.Removes an order from the order store.
+     * @param key The key of the order to be removed.
+     * @return order The removed order.
+     */
     function remove(
         bytes32 key
     ) external onlyController returns (Order.Props memory order) {
@@ -60,6 +63,11 @@ contract OrderStore is Ac {
         }
     }
 
+    /**
+     * @dev Internal function to remove an order from the order store.
+     * @param key The key of the order to be removed.
+     * @return _order The removed order.
+     */
     function _remove(bytes32 key) internal returns (Order.Props memory _order) {
         _order = orders[key];
         orderNum[_order.account] -= 1;
@@ -68,9 +76,11 @@ contract OrderStore is Ac {
         ordersByAccount[_order.account].remove(key);
     }
 
-    //=====================================
-    // POSITION KEY
-    //=====================================
+    /**
+     * @dev Filters the orders based on the given order keys.
+     * @param _ordersKeys The array of order keys to be filtered.
+     * @return orderCount The count of valid orders.
+     */
     function filterOrders(
         bytes32[] memory _ordersKeys
     ) internal view returns (uint256 orderCount) {
@@ -83,6 +93,11 @@ contract OrderStore is Ac {
         }
     }
 
+    /**
+     * @dev Called by `OrderBook`.Removes all orders associated with an account from the order store.
+     * @param account The account address.
+     * @return _orders The array of removed orders.
+     */
     function delByAccount(
         address account
     ) external onlyController returns (Order.Props[] memory _orders) {
@@ -106,10 +121,15 @@ contract OrderStore is Ac {
             }
         }
 
-        // del key
+        // Delete the ordersByAccount mapping for the specified account
         delete ordersByAccount[account];
     }
 
+    /**
+     * @dev Retrieves all orders associated with an account from the order store.
+     * @param account The account address.
+     * @return _orders The array of retrieved orders.
+     */
     function getOrderByAccount(
         address account
     ) external view returns (Order.Props[] memory _orders) {
@@ -134,27 +154,49 @@ contract OrderStore is Ac {
         }
     }
 
-    //===================================
-
-    //===================================
+    /**
+     * @dev Retrieves an order from the order store by index.
+     * @param index The index of the order.
+     * @return order The retrieved order.
+     */
     function getByIndex(
         uint256 index
     ) external view returns (Order.Props memory) {
         return orders[orderKeys.at(index)];
     }
 
+    /**
+     * @dev Checks if the given key exists in the order store.
+     * @param key The key to check.
+     * @return Whether the key exists or not.
+     */
     function containsKey(bytes32 key) external view returns (bool) {
         return orderKeys.contains(key);
     }
 
+    /**
+     * @dev Retrieves the total count of orders in the order store.
+     * @return The total count of orders.
+     */
     function getCount() external view returns (uint256) {
         return orderKeys.length();
     }
 
+    /**
+     * @dev Retrieves the order key at the specified index.
+     * @param _index The index of the order key.
+     * @return The order key.
+     */
     function getKey(uint256 _index) external view returns (bytes32) {
         return orderKeys.at(_index);
     }
 
+    /**
+     * @dev Retrieves a range of order keys from the order store.
+     * @param start The starting index of the range.
+     * @param end The ending index of the range.
+     * @return An array of order keys within the specified range.
+     */
     function getKeys(
         uint256 start,
         uint256 end
@@ -162,6 +204,11 @@ contract OrderStore is Ac {
         return orderKeys.valuesAt(start, end);
     }
 
+    /**
+     * @dev Called by `OrderBook`.Generates a unique ID for an order associated with the given account.
+     * @param _acc The account address.
+     * @return retVal The generated ID for the order.
+     */
     function generateID(
         address _acc
     ) external onlyController returns (uint256 retVal) {

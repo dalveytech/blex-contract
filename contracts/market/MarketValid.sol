@@ -48,6 +48,13 @@ contract MarketValid is Ac, IMarketValidFuncs {
 
     constructor(address _f) Ac(_f) {}
 
+    /**
+     * @dev Called by `Market`.Validates a position based on the provided inputs.
+     * @param _params The UpdatePositionInputs struct containing various parameters.
+     * @param _position The Props struct representing the position.
+     * @param _fees The array of fees associated with the position.
+     * @dev This function is view-only and does not modify the contract state.
+     */
     function validPosition(
         MarketDataTypes.UpdatePositionInputs memory _params,
         Position.Props memory _position,
@@ -82,8 +89,22 @@ contract MarketValid is Ac, IMarketValidFuncs {
         }
     }
 
+    /**
+     * @dev Called by `Market`.Validates the collateral delta based on the specified parameters.
+     * @param busType The type of business operation:
+     *   - 1: Increase collateral
+     *   - 2: Increase collateral and size
+     *   - 3: Decrease collateral
+     *   - 4: Decrease collateral and size
+     * @param _collateral The current collateral amount.
+     * @param _collateralDelta The change in collateral.
+     * @param _size The current size of the position.
+     * @param _sizeDelta The change in size of the position.
+     * @param _fees The fees associated with the position.
+     * @dev This function is a public view function and is part of the IMarketValid interface.
+     */
     function validCollateralDelta(
-        uint256 busType, // 1:increase 2. increase coll 3. decrease 4. decrease coll
+        uint256 busType,
         uint256 _collateral,
         uint256 _collateralDelta,
         uint256 _size,
@@ -91,11 +112,17 @@ contract MarketValid is Ac, IMarketValidFuncs {
         int256 _fees
     ) public view override {
         IMarketValid.Props memory _conf = conf;
+
+        // Check if the market allows opening or closing of positions based on the busType
         if (
             (!_conf.getAllowOpen() && busType <= 2) ||
             (!_conf.getAllowClose() && busType > 2)
         ) revert("MarketOfflineErr");
+
+        // If the busType indicates a decrease in collateral and the size is not changing, return without further validation
         if (busType > 2 && _sizeDelta == _size) return;
+
+        // Calculate the new collateral based on the busType
         uint256 newCollateral = (
             busType < 3
                 ? (_collateral + _collateralDelta)
@@ -103,12 +130,14 @@ contract MarketValid is Ac, IMarketValidFuncs {
         );
         if (busType == 3 && newCollateral == 0) return;
 
+        // Adjust the new collateral based on the fees
         if (_fees > 0) {
             newCollateral -= uint256(_fees);
         } else {
             newCollateral += uint256(-_fees);
         }
 
+        // Validate the collateral and size based on the configured minimum values
         if (
             (_collateral == 0 &&
                 busType == 1 &&
@@ -119,14 +148,25 @@ contract MarketValid is Ac, IMarketValidFuncs {
         }
 
         uint256 newSize = _size;
+
+        // Update the newSize based on the busType
         if (busType == 1) newSize += _sizeDelta;
         else if (busType == 3) newSize -= _sizeDelta;
 
+        // Calculate the leverage and validate it against the configured maximum and minimum values
         uint256 lev = newSize / newCollateral;
         if (lev > _conf.getMaxLev() || lev < _conf.getMinLev())
             revert("Lev exceed");
     }
 
+    /**
+     * @dev Validates the take profit and stop loss prices for a position.
+     * @param _triggerPrice The trigger price of the position.
+     * @param _tpPrice The take profit price.
+     * @param _slPrice The stop loss price.
+     * @param _isLong Boolean flag indicating whether the position is long.
+     * @dev This function is private and should not be called directly from outside the contract.
+     */
     function validTPSL(
         uint256 _triggerPrice,
         uint256 _tpPrice,
@@ -149,44 +189,81 @@ contract MarketValid is Ac, IMarketValidFuncs {
         }
     }
 
+    /**
+     * @dev Called by `Market`.Validates an increase order based on the provided inputs.
+     * @param _vars The UpdateOrderInputs struct containing various parameters.
+     * @param fees The fees associated with the order.
+     * @dev This function is a view-only function.
+     */
     function validIncreaseOrder(
         MarketDataTypes.UpdateOrderInputs memory _vars,
         int256 fees
     ) external view {
+        // Validate the take profit and stop loss prices of the order
         validTPSL(
             _vars._order.price,
             _vars._order.getTakeprofit(),
             _vars._order.getStoploss(),
             _vars._isLong
         );
+        // Validate the size of the order
         validSize(0, _vars._order.price, true);
 
+        // Validate the collateral delta for an increase order
         validCollateralDelta(1, 0, _vars.pay(), 0, _vars._order.size, fees);
     }
 
+    /**
+     * @dev Called by `Market`.Validates the size of a position.
+     * @param _size The current size of the position.
+     * @param _sizeDelta The change in size of the position.
+     * @param _isIncrease Boolean flag indicating whether the size is increasing.
+     * @dev This function is a public view function and is part of the IMarketValid interface.
+     */
     function validSize(
         uint256 _size,
         uint256 _sizeDelta,
         bool _isIncrease
     ) public pure override {
-        
-        if (false == _isIncrease) {
-            require(_size >= _sizeDelta, "SizeValidErr");
-        }
+        // Require that the size is greater than or equal to the size delta for a decrease in size
+        if (false == _isIncrease) require(_size >= _sizeDelta, "SizeValidErr");
     }
 
+    /**
+     * @dev Called by `Market`.Validates the payment amount for a transaction.
+     * @param _pay The payment amount to be validated.
+     * @dev This function is a public view function.
+     */
     function validPay(uint256 _pay) public view {
+        // Check if the payment amount exceeds the maximum trade amount
         if (_pay > conf.getMaxTradeAmount()) {
             revert("pay>MaxTradeAmount");
         }
     }
 
+    /**
+     * @dev Retrieves the validation status for a decrease order count.
+     * @param decrOrderCount The current count of decrease orders.
+     * @return isValid Boolean value indicating whether the decrease order count is valid.
+     * @dev This function is a view function and is part of the IMarketValid interface.
+     */
     function getDecreaseOrderValidation(
         uint256 decrOrderCount
     ) external view override returns (bool isValid) {
+        // Check if the decrease order count is within the limit defined by the configuration
         return conf.getDecrOrderLmt() >= decrOrderCount + 1;
     }
 
+    /**
+     * @dev Called by `Market`.Validates a decrease order based on the provided inputs.
+     * @param _collateral The current collateral amount.
+     * @param _collateralDelta The change in collateral amount.
+     * @param _size The current size of the position.
+     * @param _sizeDelta The change in size of the position.
+     * @param fees The fees associated with the order.
+     * @param decrOrderCount The count of decrease orders.
+     * @dev This function is a view function.
+     */
     function validDecreaseOrder(
         uint256 _collateral,
         uint256 _collateralDelta,
@@ -195,10 +272,13 @@ contract MarketValid is Ac, IMarketValidFuncs {
         int256 fees,
         uint256 decrOrderCount
     ) external view {
+        // Check if the decrease order count is within the limit defined by the configuration
         require(conf.getDecrOrderLmt() >= decrOrderCount + 1, "trigger>10");
 
+        // Validate the size of the position for a decrease order
         validSize(_size, _sizeDelta, false);
 
+        // If enabled, validate the collateral delta for a decrease order
         if (conf.getEnableValidDecrease())
             validCollateralDelta(
                 3,
@@ -210,6 +290,16 @@ contract MarketValid is Ac, IMarketValidFuncs {
             );
     }
 
+    /**
+     * @dev Called by `Market`.Retrieves the range of collateral delta values based on the specified inputs.
+     * @param _isIncrease Boolean flag indicating whether the size is increasing.
+     * @param _oldCollertal The current collateral amount.
+     * @param _oldSize The current size of the position.
+     * @param _sizeDelta The change in size of the position.
+     * @return maxCollateralDelta The maximum collateral delta value.
+     * @return minCollateralDelta The minimum collateral delta value.
+     * @dev This function is a public view function and is part of the IMarketValid interface.
+     */
     function getCollateralRange(
         bool _isIncrease,
         uint256 _oldCollertal,
@@ -242,6 +332,15 @@ contract MarketValid is Ac, IMarketValidFuncs {
         }
     }
 
+    /**
+     * @dev Called by `Market`.Validates the mark price based on the specified inputs.
+     * @param _isLong Boolean flag indicating whether the position is long.
+     * @param _price The current price of the position.
+     * @param _isIncrease Boolean flag indicating whether the size is increasing.
+     * @param _isExec Boolean flag indicating whether the execution is internal or external.
+     * @param _markPrice The mark price of the position.
+     * @dev This function is a public view function and is part of the IMarketValid interface.
+     */
     function validMarkPrice(
         bool _isLong,
         uint256 _price,
@@ -260,6 +359,11 @@ contract MarketValid is Ac, IMarketValidFuncs {
         }
     }
 
+    /**
+     * @dev Called by `Market`.Validates the slippage price based on the provided inputs.
+     * @param _inputs The UpdatePositionInputs struct containing various parameters.
+     * @dev This function is a view function and is part of the IMarketValid interface.
+     */
     function validSlippagePrice(
         MarketDataTypes.UpdatePositionInputs memory _inputs
     ) public view override {
@@ -323,6 +427,20 @@ contract MarketValid is Ac, IMarketValidFuncs {
         conf = _conf;
     }
 
+    /**
+     * @dev Called by `MarketValid`.Validates the liquidation conditions based on the provided inputs.
+     * @param pnl The profit and loss value.
+     * @param fees The fees associated with the position.
+     * @param liquidateFee The liquidation fee.
+     * @param collateral The current collateral amount.
+     * @param size The current size of the position.
+     * @param _raise Boolean flag indicating whether to revert on validation failure.
+     * @return _state The state indicating the result of the liquidation validation:
+     *   - 0: Liquidation conditions are not met.
+     *   - 1: Losses or fees exceed collateral.
+     *   - 2: Maximum leverage exceeded.
+     * @dev This function is a public view function and is part of the IVault interface.
+     */
     function validateLiquidation(
         int256 pnl,
         int256 fees,
@@ -381,6 +499,19 @@ contract MarketValid is Ac, IMarketValidFuncs {
         int256 _liqFee;
     }
 
+    /**
+     * @dev Called by `Market` and `MarketReader`.Determines the state of liquidation for a given account and market.
+     * @param _account The address of the account.
+     * @param _market The address of the market.
+     * @param _isLong Boolean flag indicating whether the position is long.
+     * @param positionBook The instance of the position book.
+     * @param feeRouter The instance of the fee router.
+     * @param markPrice The mark price of the position.
+     * @return _state The state indicating the result of the liquidation check:
+     *   - 0: Position is not liquidatable.
+     *   - 1: Position is liquidatable.
+     * @dev This function is a public view function and is part of the IValid interface.
+     */
     function isLiquidate(
         address _account,
         address _market,
@@ -394,6 +525,8 @@ contract MarketValid is Ac, IMarketValidFuncs {
             markPrice,
             _isLong
         );
+
+        // If the position size is 0, it is not liquidatable
         if (_position.size == 0) {
             return 0;
         }
@@ -410,6 +543,7 @@ contract MarketValid is Ac, IMarketValidFuncs {
         _vars.liqState = 1;
         int256[] memory fees = feeRouter.getFees(_vars, _position);
 
+        // Validate the liquidation based on the position details and fees
         _state = validateLiquidation(
             _position.realisedPnl,
             fees[1] + fees[2],

@@ -64,6 +64,11 @@ contract Market is MarketStorage, ReentrancyGuard, Ac {
             )
         );
 
+    /**
+     * @dev Called by `AutoOrder`.Executes the order key operation using the provided order properties and market data inputs.
+     * @param exeOrder The order properties to be executed.
+     * @param _params The market data inputs required for the execution.
+     */
     function execOrderKey(
         Order.Props memory exeOrder,
         MarketDataTypes.UpdatePositionInputs memory _params
@@ -103,7 +108,7 @@ contract Market is MarketStorage, ReentrancyGuard, Ac {
     }
 
     /**
-     * @dev This function calculates the Profit and Loss (PNL) for a user in a particular market.
+     * @dev Called by `MarketRouter`.This function calculates the Profit and Loss (PNL) for a user in a particular market.
      * @return pnl The PNL for the user in the market.
      * The function retrieves the current price of the `indexToken` using the `IPrice` contract and calculates the PNL for the market using the `getMarketPNL()` function from the `IPositionBook` contract.
      * The PNL is then converted to the user's `collateralToken` denomination using the `parseVaultAssetSigned()` function from the `TransferHelper` library.
@@ -254,6 +259,15 @@ contract Market is MarketStorage, ReentrancyGuard, Ac {
         return TransferHelper.getUSDDecimals();
     }
 
+    /**
+     * @dev Executes a delegate call to the specified address with the given message data.
+     * @param _addr The address to call.
+     * @param msgdata The data to include in the delegate call.
+     * @param defaultRevertMsg The default revert message to be used if `raise` is true and the delegate call does not revert with an error message.
+     * @param raise A boolean indicating whether to raise an exception (revert) if the delegate call fails.
+     * @return returnData The return data of the delegate call.
+     * @return success A boolean indicating the success of the delegate call.
+     */
     function _callAddress(
         address _addr,
         bytes memory msgdata,

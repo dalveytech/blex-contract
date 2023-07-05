@@ -33,10 +33,14 @@ contract OrderBook is IOrderBook, Ac {
         closeStore.initialize(_isLong);
     }
 
-    /*********************
-            查
-    ***********************/
-
+    /**
+     * @dev called by `AutoOrder`.Retrieves executable orders within a price range based on the oracle price.
+     * @param start The starting index of the orders.
+     * @param end The ending index of the orders.
+     * @param isOpen Determines whether to fetch open or close orders.
+     * @param _oraclePrice The oracle price used for filtering the orders.
+     * @return _orders An array of executable order properties.
+     */
     function getExecutableOrdersByPrice(
         uint256 start,
         uint256 end,
@@ -85,6 +89,12 @@ contract OrderBook is IOrderBook, Ac {
         }
     }
 
+    /**
+     * @dev Sets up the triggerAbove parameter for an order based on the provided variables.
+     * @param _vars The update order inputs.
+     * @param _order The order properties.
+     * @return _order The updated order with the triggerAbove parameter set.
+     */
     function setupTriggerAbove(
         MarketDataTypes.UpdateOrderInputs memory _vars,
         Order.Props memory _order
@@ -103,9 +113,11 @@ contract OrderBook is IOrderBook, Ac {
         return _order;
     }
 
-    /*********************
-            增
-    ***********************/
+    /**
+     * @dev called by `Market`.Adds multiple orders to the appropriate order store.
+     * @param _vars The array of update order inputs.
+     * @return _orders An array of added order properties.
+     */
     function add(
         MarketDataTypes.UpdateOrderInputs[] memory _vars
     ) external override onlyController returns (Order.Props[] memory _orders) {
@@ -141,9 +153,11 @@ contract OrderBook is IOrderBook, Ac {
         }
     }
 
-    /*********************
-            改
-    ***********************/
+    /**
+     * @dev called by `Market`.Updates the properties of an existing order.
+     * @param _vars The update order inputs.
+     * @return _order The updated order properties.
+     */
     function update(
         MarketDataTypes.UpdateOrderInputs memory _vars
     ) external override onlyController returns (Order.Props memory _order) {
@@ -168,9 +182,12 @@ contract OrderBook is IOrderBook, Ac {
         os.set(_order);
     }
 
-    /*********************
-            删
-    ***********************/
+    /**
+     * @dev Called by `Market`.Removes all orders associated with a specific account.
+     * @param isOpen Determines whether to remove open or close orders.
+     * @param account The account address.
+     * @return _orders An array of removed order properties.
+     */
     function removeByAccount(
         bool isOpen,
         address account
@@ -180,6 +197,13 @@ contract OrderBook is IOrderBook, Ac {
         }
     }
 
+    /**
+     * @dev Called by `Market`.Removes a specific order based on the account and order ID.
+     * @param account The account address.
+     * @param orderID The order ID.
+     * @param isOpen Determines whether to remove an open or close order.
+     * @return _orders An array of removed order properties.
+     */
     function remove(
         address account,
         uint256 orderID,
@@ -188,6 +212,12 @@ contract OrderBook is IOrderBook, Ac {
         _orders = remove(OrderLib.getKey(account, uint64(orderID)), isOpen);
     }
 
+    /**
+     * @dev Called by `Market`.Removes a specific order based on the key and whether it is open or close.
+     * @param key The order key.
+     * @param isOpen Determines whether to remove an open or close order.
+     * @return _orders An array of removed order properties.
+     */
     function remove(
         bytes32 key,
         bool isOpen
@@ -201,9 +231,11 @@ contract OrderBook is IOrderBook, Ac {
         _orders[0] = s.remove(key);
     }
 
-    /*********************
-            private
-    ***********************/
+    /**
+     * @dev Validates the input parameters of an order.
+     * @param _order The order properties.
+     * @param _isOpen Determines whether the order is open or close.
+     */
     function _validInputParams(
         Order.Props memory _order,
         bool _isOpen

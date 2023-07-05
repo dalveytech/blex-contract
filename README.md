@@ -35,6 +35,27 @@ To deploy and test the Blex.io Perpetual Trading Platform, you can use the follo
 
 Before deploying and testing, make sure you have Node.js and Hardhat framework installed locally.
 
+## Who holds the most assets?
+`Market`, `FeeVault`, `CoreVault`
+
+## Formular && Calculations
+TODO
+
+## Roles
+Definition of different roles in the system and what functions the roles can access.
+Checkout roles list in `./static_analysis/access_control_function.csv`
+
+## Units Convertions
+* `CoreVault` : 6 decimals
+* `size`: 18 decimals
+* `collateral` : 18 decimals
+* `fees` : 18 decimals
+* `pnl` : 18 decimals
+* `takeProfit` : 18 decimals
+* `stopLoss` : 18 decimals
+* `price` : 30 decimals
+
+
 ## Copyright
 
 The Blex.io Perpetual Trading Platform is an open-source project following the BUSL-1.1 license.
