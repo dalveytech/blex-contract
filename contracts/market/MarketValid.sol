@@ -207,7 +207,7 @@ contract MarketValid is Ac, IMarketValidFuncs {
             _vars._isLong
         );
         // Validate the size of the order
-        validSize(0, _vars._order.price, true);
+        validSize(0, _vars._order.size, true);
 
         // Validate the collateral delta for an increase order
         validCollateralDelta(1, 0, _vars.pay(), 0, _vars._order.size, fees);
