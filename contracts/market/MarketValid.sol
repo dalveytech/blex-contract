@@ -273,7 +273,7 @@ contract MarketValid is Ac, IMarketValidFuncs {
         uint256 decrOrderCount
     ) external view {
         // Check if the decrease order count is within the limit defined by the configuration
-        require(conf.getDecrOrderLmt() >= decrOrderCount + 1, "trigger>10");
+        require(conf.getDecrOrderLmt() >= decrOrderCount + 1, "ttrigger orders cannot exceed the configuration");
 
         // Validate the size of the position for a decrease order
         validSize(_size, _sizeDelta, false);
